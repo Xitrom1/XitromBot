@@ -22,6 +22,7 @@ const start = () => {
 
     //Получение сообщение от пользователя и его обработка
     bot.on('message', async msg => {
+        console.log('{User: '+msg.from.first_name+'\nUserId: '+msg.chat.id+'\nUserMessage: '+msg.text+'}')
         const text = msg.text;
         const chatId = msg.chat.id;
         switch (text) {
