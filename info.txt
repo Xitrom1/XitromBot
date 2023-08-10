@@ -1,0 +1,10 @@
+npm innit -y 
+npm install -g nodemon --save-dev
+npm install --save node-telegram-bot-api
+npm i pg pg-hstore
+
+package.json {
+    script: 
+    "dev": "nodemon telegramBot.js",
+    "start": "node telegramBot.js"
+}
