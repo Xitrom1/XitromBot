@@ -1,5 +1,5 @@
-const {Sequelize} = require('sequelize');
+// const {Sequelize} = require('sequelize');
 
-module.exports = new Sequelize(
+// module.exports = new Sequelize(
     
-)
+// )
