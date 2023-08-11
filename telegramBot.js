@@ -78,8 +78,8 @@ const showUser = (chatId) => {
         if (parseddata[i].chatId == ('"'+UserChatId+'"')) {
             let photo = parseddata[i].img.replace('"', '').replace('"', '')
             bot.sendPhoto(chatId, photo, { caption: 'Ваше фото:' });
-            let userInfo = parseddata[i].real_first_name+`(${parseddata[i].username})`+', '+parseddata[i].age+', '+ parseddata[i].city+ '\n'+parseddata[i].text
-            for (let j=0; j<8;j++) {
+            let userInfo = parseddata[i].real_first_name+`(${parseddata[i].username})`+', '+parseddata[i].age+', '+ parseddata[i].city+ '.\n'+parseddata[i].text
+            for (let j=0; j<10;j++) {
                 userInfo = userInfo.replace('"', '')
             }
             funON = false
@@ -123,12 +123,27 @@ const start = () => {
             case '/reg':
                 return pushUser(chatId, first_name, msg.from.username, msg.from.is_bot);
             case '/search':
-                for (let i=0; i<parseddata.length;i++) {
-                    let string = parseddata[i].first_name;
+                funON = true
+                let i = 1
+                let string = parseddata[i].first_name;
                     while (string.includes('"')) string = string.replace('"', '')
-                    bot.sendMessage(chatId, string)
-                }
-                return;
+                    function showUserOnce(i) {
+                        let photo = parseddata[i].img.replace('"', '').replace('"', '')
+                        bot.sendPhoto(chatId, photo, { caption: 'Фото пользователя:' });
+                        let userInfo = parseddata[i].real_first_name+`(${parseddata[i].username})`+', '+parseddata[i].age+', '+ parseddata[i].city+ '.\n'+parseddata[i].text
+                        for (let j=0; j<10;j++) userInfo = userInfo.replace('"', '')
+                        bot.sendMessage(chatId, userInfo)
+                    }    
+                    showUserOnce(i)
+                    bot.sendMessage(chatId, 'Чтобы перейте к следующему пользователю, напишите в чат ">"')
+                    bot.on('message', (msg2) => {
+                        const answer = msg2.text;
+                        if (answer === '>') {
+                            i++
+                            if (parseddata.length == i) {funON = false;return bot.sendMessage(chatId, 'Конец поиска.')}
+                            else showUserOnce(i)
+                        }
+                    }) 
             default: if(funON==false) return bot.sendMessage(chatId, 'Не понимаю Вас(')
         }
     })
