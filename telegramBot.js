@@ -1,6 +1,6 @@
 const TelegramAPI = require('node-telegram-bot-api')
 const token = '6691238663:AAHnpiG4TeNae6YaZIgtrrWtoY8PceU86OQ'
-const {gameOptions, againOptions} = require('./options.js')
+const {gameOptions, againOptions, choiseOptions} = require('./options.js')
 const bot = new TelegramAPI(token, {polling: true})
 
 const fs = require('fs');
@@ -9,7 +9,8 @@ let parseddata= JSON.parse(rawdata); // парсим и получаем JS об
 
 
 const chats = {}
-let ON = false
+let funON = false
+let searchON = false
 
 function askQuestion(chatId) {
     return new Promise(function(resolve) {
@@ -28,6 +29,7 @@ const startGame = async (chatId) => {
     await bot.sendMessage(chatId, 'Готово! Попробуй отгадать.', gameOptions)
 }
 const pushUser = async (pushId, pushFirst_name, pushUsername, pushIs__bot) => {
+    funON = true;
     for (let i = 0; i<parseddata.length; i++) {
         if (parseddata[i].chatId == ('"'+pushId+'"')) {
             funON=false
@@ -37,8 +39,10 @@ const pushUser = async (pushId, pushFirst_name, pushUsername, pushIs__bot) => {
     if (pushFirst_name != '') bot.sendMessage(pushId, pushFirst_name+', пожалуйста, введите своё имя.')
     else bot.sendMessage(pushId, 'Пожалуйста, введите своё имя.')
     const pushreal_first_name = await askQuestion(pushId);
-    bot.sendMessage(pushId, 'Введите свою фамилию.')
-    const pushreal_last_name = await askQuestion(pushId);
+    bot.sendMessage(pushId, 'Какого вы пола?')
+    const pushgender = await askQuestion(pushId);
+    bot.sendMessage(pushId, 'Кого хотите искать?')
+    const pushwhoLook = await askQuestion(pushId);
     bot.sendMessage(pushId, 'Укажите свой возраст.')
     const pushage = await askQuestion(pushId);
     bot.sendMessage(pushId, 'Укажите город проживания.')
@@ -57,7 +61,8 @@ const pushUser = async (pushId, pushFirst_name, pushUsername, pushIs__bot) => {
         "username": '"'+pushUsername+'"',
         "is__bot": '"'+pushIs__bot+'"',
         "real_first_name": '"'+pushreal_first_name.text+'"',
-        "real_last_name": '"'+pushreal_last_name.text+'"',
+        "gender": '"'+pushgender.text+'"',
+        "whoLook": '"'+pushwhoLook.text+'"',
         "age": '"'+pushage.text+'"',
         "city": '"'+pushcity.text+'"',
         "img": '"'+photo_id+'"',
@@ -77,16 +82,31 @@ const showUser = (chatId) => {
     for (let i = 0; i<parseddata.length; i++) {
         if (parseddata[i].chatId == ('"'+UserChatId+'"')) {
             let photo = parseddata[i].img.replace('"', '').replace('"', '')
-            bot.sendPhoto(chatId, photo, { caption: 'Ваше фото:' });
-            let userInfo = parseddata[i].real_first_name+`(${parseddata[i].username})`+', '+parseddata[i].age+', '+ parseddata[i].city+ '.\n'+parseddata[i].text
+            let userInfo = parseddata[i].real_first_name+', '+parseddata[i].age+', '+ parseddata[i].city+ '.\n'+parseddata[i].text
             for (let j=0; j<10;j++) {
                 userInfo = userInfo.replace('"', '')
             }
             funON = false
-            return bot.sendMessage(chatId, userInfo)
+            return bot.sendPhoto(chatId, photo, { caption: userInfo });
         }
     }            
 }
+
+function sendMessageAndWaitForReply(chatId, message) {
+    return new Promise((resolve) => {
+    //   bot.sendMessage(chatId, message, choiseOptions) TODO
+      bot.sendMessage(chatId, message)
+        .then(() => {
+          // Слушаем сообщения от пользователя
+          bot.on('message', (msg) => {
+            if (msg.chat.id === chatId && msg.text) {
+              // Пользователь отправил ответ, разрешаем выполнение промиса
+              resolve(msg);
+            }
+          });
+        });
+    });
+  }
 
 const start = () => {
     //Установить информацию о командах для пользователя, которые он может просматривать, нажимая на кнопку "menu"
@@ -109,9 +129,8 @@ const start = () => {
         if (msg.from.last_name== undefined) last_name = '';
 
         switch (text) {
-            case '/start': return bot.sendMessage(chatId, 'Добро пожаловать!');
+            case '/start': if(funON==false) return bot.sendMessage(chatId, 'Добро пожаловать!');
             case '/info':
-                funON = true
                 // let UserChatId = ''
                 // if (chatId == 1311752920) {
                 //     bot.sendMessage(chatId, 'Введите id пользователя')
@@ -123,37 +142,71 @@ const start = () => {
             case '/reg':
                 return pushUser(chatId, first_name, msg.from.username, msg.from.is_bot);
             case '/search':
+                searchON=true;
                 funON = true
-                let i = 1
-                let string = parseddata[i].first_name;
-                    while (string.includes('"')) string = string.replace('"', '')
-                    function showUserOnce(i) {
-                        let photo = parseddata[i].img.replace('"', '').replace('"', '')
-                        bot.sendPhoto(chatId, photo, { caption: 'Фото пользователя:' });
-                        let userInfo = parseddata[i].real_first_name+`(${parseddata[i].username})`+', '+parseddata[i].age+', '+ parseddata[i].city+ '.\n'+parseddata[i].text
-                        for (let j=0; j<10;j++) userInfo = userInfo.replace('"', '')
-                        bot.sendMessage(chatId, userInfo)
-                    }    
-                    showUserOnce(i)
-                    bot.sendMessage(chatId, 'Чтобы перейте к следующему пользователю, напишите в чат ">"')
-                    bot.on('message', (msg2) => {
-                        const answer = msg2.text;
-                        if (answer === '>') {
-                            i++
-                            if (parseddata.length == i) {funON = false;return bot.sendMessage(chatId, 'Конец поиска.')}
-                            else showUserOnce(i)
-                        }
-                    }) 
+                let countUser = 0;
+                let i = 2
+                let whoLook = 'Девушка';
+                let age = 21;
+                for (let k=0;k<parseddata.length;k++) if(parseddata[k].chatId.replace('"', '').replace('"', '')==chatId)  {
+                    whoLook = parseddata[k].whoLook.replace('"', '').replace('"', '');
+                    let age = Number(parseddata[k].age.replace('"', '').replace('"', ''));
+                }
+                function showUserOnce(i) {
+                    let photo = parseddata[i].img.replace('"', '').replace('"', '')
+                    if (photo == 'not image') photo = 'AgACAgIAAxkBAAIKaWTZ3M6ByQABvtiVvtqA9V8c3ipvswACCswxG_vl0EodqI_LC_HufAEAAwIAA3MAAzAE'
+                    let userInfo = parseddata[i].real_first_name+', '+parseddata[i].age+', '+ parseddata[i].city+ '.\n'+parseddata[i].text
+                    for (let j=0; j<10;j++) userInfo = userInfo.replace('"', '')
+                    bot.sendPhoto(chatId, photo, {caption: userInfo});
+                }
+                let No1 = false;
+                if (
+                    parseddata[1].chatId.replace('"', '').replace('"', '')!=chatId && 
+                    whoLook==parseddata[1].gender.replace('"', '').replace('"', '') &&
+                    Number(parseddata[1].age.replace('"', '').replace('"', '')) < age+3 &&
+                    age-3 < Number(parseddata[1].age.replace('"', '').replace('"', ''))
+                ) {countUser==0;showUserOnce(1);}        
+                else No1 = true;
+                let iwhile=true
+                let resolve = '>'
+                while (iwhile==true) {
+                    if (i<parseddata.length) {
+                        if (
+                            parseddata[i].chatId.replace('"', '').replace('"', '')!=chatId && 
+                            whoLook==parseddata[i].gender.replace('"', '').replace('"', '')  &&
+                            Number(parseddata[i].age.replace('"', '').replace('"', '')) < age+3 &&
+                            age-3 < Number(parseddata[i].age.replace('"', '').replace('"', ''))
+                            ) {
+                            if (i!=2 && No1==false){
+                                let resolveFun = await sendMessageAndWaitForReply(chatId, 'Вам нравится анкета? (1=Да, 0=нет)');
+                                resolve = resolveFun.text
+                            }
+                            if (resolve == '1' || resolve == '0')  {countUser++; showUserOnce(i);}
+                        }     
+                        i++;
+                        No1=false
+                    }
+                    else iwhile=false
+                }
+                funON = false;
+                searchON=false;
+                if (countUser==0)  return bot.sendMessage(chatId, 'Под Вас никого не нашли(')
+                else return bot.sendMessage(chatId, 'Конец поиска.')
+
             default: if(funON==false) return bot.sendMessage(chatId, 'Не понимаю Вас(')
         }
     })
 
     bot.on('callback_query', async msg => {
-        const data = msg.data;
-        const chatId = msg.message.chat.id;
-        if (data == '/again') return startGame(chatId);
-        if (data == chats[chatId]) return await bot.sendMessage(chatId, 'Поздравляю, ты угадал(а), это цифра ' + chats[chatId] + '!', againOptions);
-        else return bot.sendMessage(chatId, 'К сожалению, это не та цифра, я загадал ' + chats[chatId] + '!', againOptions);
+        if (searchON==false) {
+            const data = msg.data;
+            const chatId = msg.message.chat.id;
+            if (data == '/again') return startGame(chatId);
+            if (data == chats[chatId]) return await bot.sendMessage(chatId, 'Поздравляю, ты угадал(а), это цифра ' + chats[chatId] + '!', againOptions);
+            else return bot.sendMessage(chatId, 'К сожалению, это не та цифра, я загадал ' + chats[chatId] + '!', againOptions);
+        }
+        else {//TODO
+        }
     })
 }
 start();
