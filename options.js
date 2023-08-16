@@ -22,7 +22,7 @@ againOptions: {
 choiseOptions: {
     reply_markup: JSON.stringify({
         inline_keyboard: [
-            [{text: String.fromCodePoint(0x1F621), callback_data: 'like'}, {text: String.fromCodePoint(0x1F621), callback_data: 'dislike'} ],
+            [{text: String.fromCodePoint(0x2764), callback_data: 'like'}, {text: String.fromCodePoint(0x1F44E), callback_data: 'dislike'} ],
         ]
     })
 }

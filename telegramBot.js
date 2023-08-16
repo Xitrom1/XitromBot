@@ -94,13 +94,10 @@ const showUser = (chatId) => {
 
 function sendMessageAndWaitForReply(chatId, message) {
     return new Promise((resolve) => {
-    //   bot.sendMessage(chatId, message, choiseOptions) TODO
-      bot.sendMessage(chatId, message)
+      bot.sendMessage(chatId, message, choiseOptions)
         .then(() => {
-          // Слушаем сообщения от пользователя
-          bot.on('message', (msg) => {
-            if (msg.chat.id === chatId && msg.text) {
-              // Пользователь отправил ответ, разрешаем выполнение промиса
+            bot.on('callback_query', async msg => {
+            if (msg.data) {
               resolve(msg);
             }
           });
@@ -124,9 +121,7 @@ const start = () => {
         const text = msg.text;
         const chatId = msg.chat.id;
         let first_name = msg.from.first_name
-        let last_name = msg.from.last_name
         if (msg.from.first_name == undefined) first_name = '';
-        if (msg.from.last_name== undefined) last_name = '';
 
         switch (text) {
             case '/start': if(funON==false) return bot.sendMessage(chatId, 'Добро пожаловать!');
@@ -144,13 +139,14 @@ const start = () => {
             case '/search':
                 searchON=true;
                 funON = true
+                let likeds = ['0'];
                 let countUser = 0;
                 let i = 2
                 let whoLook = 'Девушка';
                 let age = 21;
                 for (let k=0;k<parseddata.length;k++) if(parseddata[k].chatId.replace('"', '').replace('"', '')==chatId)  {
                     whoLook = parseddata[k].whoLook.replace('"', '').replace('"', '');
-                    let age = Number(parseddata[k].age.replace('"', '').replace('"', ''));
+                    age = Number(parseddata[k].age.replace('"', '').replace('"', ''));
                 }
                 function showUserOnce(i) {
                     let photo = parseddata[i].img.replace('"', '').replace('"', '')
@@ -161,37 +157,52 @@ const start = () => {
                 }
                 let No1 = false;
                 if (
-                    parseddata[1].chatId.replace('"', '').replace('"', '')!=chatId && 
-                    whoLook==parseddata[1].gender.replace('"', '').replace('"', '') &&
+                    parseddata[1].chatId.replace('"', '').replace('"', '')!=chatId &&
+                    whoLook==parseddata[1].gender.replace('"', '').replace('"', '') && 
                     Number(parseddata[1].age.replace('"', '').replace('"', '')) < age+3 &&
                     age-3 < Number(parseddata[1].age.replace('"', '').replace('"', ''))
-                ) {countUser==0;showUserOnce(1);}        
+                ) {countUser++;showUserOnce(1);}        
                 else No1 = true;
                 let iwhile=true
-                let resolve = '>'
+                let resolve = '01'
                 while (iwhile==true) {
                     if (i<parseddata.length) {
                         if (
-                            parseddata[i].chatId.replace('"', '').replace('"', '')!=chatId && 
-                            whoLook==parseddata[i].gender.replace('"', '').replace('"', '')  &&
+                            parseddata[i].chatId.replace('"', '').replace('"', '')!=chatId &&
+                            whoLook==parseddata[i].gender.replace('"', '').replace('"', '') && 
                             Number(parseddata[i].age.replace('"', '').replace('"', '')) < age+3 &&
                             age-3 < Number(parseddata[i].age.replace('"', '').replace('"', ''))
                             ) {
-                            if (i!=2 && No1==false){
-                                let resolveFun = await sendMessageAndWaitForReply(chatId, 'Вам нравится анкета? (1=Да, 0=нет)');
-                                resolve = resolveFun.text
+                            if (resolve == '1' || resolve == '0' || resolve == '01')  {countUser++;No1=false; showUserOnce(i);}
+                            let resolveFun = await sendMessageAndWaitForReply(chatId, 'Вам нравится анкета?');
+                            resolve = resolveFun.data
+                            if (resolve=='like') {
+                                likeds[likeds.length]=parseddata[i].chatId
+                                resolve='1'
                             }
-                            if (resolve == '1' || resolve == '0')  {countUser++; showUserOnce(i);}
+                            else resolve='0'    
                         }     
                         i++;
-                        No1=false
                     }
                     else iwhile=false
                 }
                 funON = false;
                 searchON=false;
+                
                 if (countUser==0)  return bot.sendMessage(chatId, 'Под Вас никого не нашли(')
-                else return bot.sendMessage(chatId, 'Конец поиска.')
+                else {
+                    let likedsURLs = ''
+                    for (let i=0; i< likeds.length;i++) {
+                        for(let j=0; j<parseddata.length;j++) {
+                            if (parseddata[j].chatId == likeds[i]) likedsURLs=likedsURLs+'\nhttps://t.me/'+parseddata[j].username.replace('"', '').replace('"', '')
+                        }
+                        
+                    }
+                    console.log(likeds)
+                    likedsURLs = 'Вы лайкнули '+(likeds.length-1)+' человек из '+countUser+':\n'+likedsURLs
+                    bot.sendMessage(chatId, likedsURLs)
+                    return bot.sendMessage(chatId, 'Конец поиска.')
+                }
 
             default: if(funON==false) return bot.sendMessage(chatId, 'Не понимаю Вас(')
         }
@@ -204,8 +215,6 @@ const start = () => {
             if (data == '/again') return startGame(chatId);
             if (data == chats[chatId]) return await bot.sendMessage(chatId, 'Поздравляю, ты угадал(а), это цифра ' + chats[chatId] + '!', againOptions);
             else return bot.sendMessage(chatId, 'К сожалению, это не та цифра, я загадал ' + chats[chatId] + '!', againOptions);
-        }
-        else {//TODO
         }
     })
 }
